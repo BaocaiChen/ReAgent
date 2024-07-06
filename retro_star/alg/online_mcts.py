@@ -3,7 +3,11 @@ import numpy as np
 import logging
 from queue import Queue
 from retro_star.alg.online_search_tree import OnlineSearchTree
-
+import csv
+from retro_star.chat import GPTCall
+import re
+from retro_star.alg.prompts import FORMAT_INSTRUCTIONS, QUESTION_PROMPT, REPHRASE_TEMPLATE, SUFFIX,PREFIX,first_round
+import csv
 def online_mcts(target_mol, target_mol_id, starting_mols, expand_fn, value_fn, prior_fn,
                 iterations, args, viz=False, viz_dir=None, test=False):
     mol_tree = OnlineSearchTree(
@@ -15,6 +19,7 @@ def online_mcts(target_mol, target_mol_id, starting_mols, expand_fn, value_fn, p
     )
     result = {
         "tot_model_calls": 0,
+        "tot_llm_calls":0,
         "num_succ_before_take": 0,
         "num_take_unsucc_when_succ": 0,
         "num_deadends": 0,
@@ -24,17 +29,21 @@ def online_mcts(target_mol, target_mol_id, starting_mols, expand_fn, value_fn, p
     }
     mol_tree.nodes_buffer.put(mol_tree.root)
     if not mol_tree.succ:
+        num_of_simulate = 0
         while (not mol_tree.nodes_buffer.empty()
                and result["tot_model_calls"] < iterations): # TODO: change the name of iterations
             m_next = mol_tree.nodes_buffer.get()
 
             # simulation
             # TODO: restrict to 500 calls
+            num_of_simulate+=1
             available_num_model_calls = min(args.num_simulations, iterations - result["tot_model_calls"])
-            num_model_calls = simulate(mol_tree, m_next, available_num_model_calls, expand_fn, args, test=test)
+            num_model_calls,num_llm_calls = simulate(mol_tree, m_next, available_num_model_calls,num_of_simulate, expand_fn, args,target_mol_id, test=test)
+            #print(f"test finish!")
             # assert num_model_calls <= available_num_model_calls
             result["tot_model_calls"] += num_model_calls
-
+            result["tot_llm_calls"] += num_llm_calls
+            #print(f"llm calls :",num_llm_calls)
             # fail condition: m_next is a deadend after simulation
             if m_next.is_deadend:
                 break
@@ -68,13 +77,18 @@ def online_mcts(target_mol, target_mol_id, starting_mols, expand_fn, value_fn, p
 
     return mol_tree.succ, (mol_tree, result["tot_model_calls"]), result # TODO: simplify this
 
-def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, test=False):
+def simulate(mol_tree, root_mol, available_num_model_calls,num_of_simulate, expand_fn, args,target_mol_id, test=False):
     assert not (test and root_mol.succ)
     assert not root_mol.is_deadend
 
     root_mol.is_simulation_root = True
     model_calls_cnt = 0
-
+    llm_calls_cnt = 0
+    filename = 'cashe/test_search_tree_%s_%s_%s.csv'%(target_mol_id,num_of_simulate,"mcts")
+    with open(filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+        # 写入数据行
+        writer.writerow(['id','reactions'])
     while root_mol.N < args.num_simulations:
         if root_mol.is_deadend:
             return model_calls_cnt
@@ -82,6 +96,7 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
         mol_node = root_mol
         # select a molecule to expand
         C = args.PUCT_coef
+        N_selection = 0
         while mol_node.children:
             assert not mol_node.is_deadend
             assert not all(reaction.is_deadend for reaction in mol_node.children)
@@ -98,6 +113,43 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
             R = np.array([reaction_node.R for reaction_node in mol_node.children])
             assert np.logical_and(0.0 <= R, R <= 1.0).all()
             Q = Q.clip(0, 5) # TODO: to be tuned
+            #print(Q,R)
+            # Q_s=str(Q)
+            # R_s=str(R)
+            Reactions=[]
+            ID=0
+            with open(filename, 'a', newline='') as file:
+                writer = csv.writer(file)
+                    # 写入数据行
+                    #writer.writerow([reaction_node.id,mol_node.mol+">>"+reactant_list])
+                writer.writerow(["selection step nums:{N}".format(N=N_selection)])
+            for reaction_node in mol_node.children:
+                reactant_list=''
+                Reaction=''
+                for reactant in reaction_node.children:
+                    reactant_list=reactant_list+reactant.mol+'.'
+                Reaction = str(ID)+':'+mol_node.mol+">>"+reactant_list+" is_dead: "+str(reaction_node.is_deadend)
+                Reactions.append(Reaction)
+                ID+=1
+                with open(filename, 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    # 写入数据行
+                    #writer.writerow([reaction_node.id,mol_node.mol+">>"+reactant_list])
+                    #writer.writerow(["search round:{N}".format(N=N_selection)])
+                    writer.writerow([Reaction])
+            context=[
+                {"role": "system", "content": PREFIX},
+                {"role": "user", "content": first_round.format(reactions=Reactions)}
+            ]
+            #Question=QUESTION_PROMPT.format(Q=Q_s,R=R_s)
+            #context.append({"role": "user", "content":Question})
+            response=(GPTCall(context))
+            llm_calls_cnt+=1
+            idx=re.findall(r'\d+',response)
+            if idx:
+                idx=int(idx[0])
+                #print(idx)
+
             # U = (1 - R) * (-np.log(R)) + R * Q
             U = R * Q + (1 - R) * 5.0
             # U = np.exp(-U)
@@ -123,10 +175,15 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
             is_deadend = np.array([reaction.is_deadend for reaction in mol_node.children])
             assert not all(reaction.is_deadend for reaction in mol_node.children), len(mol_node.children)
             PUCT[is_deadend] = -np.inf
-
-            # select reaction node
-            reaction_node = mol_node.children[PUCT.argmax()]
-
+            #reaction_node = mol_node.children[PUCT.argmax()]
+            #select reaction node
+            if not idx:
+                reaction_node = mol_node.children[PUCT.argmax()]
+            else:
+                if idx<len(mol_node.children):
+                    reaction_node = mol_node.children[idx]
+                else:
+                    reaction_node = mol_node.children[PUCT.argmax()]
             # select molecule node
             not_expanded = np.array([mol.open for mol in reaction_node.children])
             not_succ = np.array([not mol.succ for mol in reaction_node.children])
@@ -144,6 +201,20 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
                 next_idx = np.random.choice(len(reaction_node.children))
 
             mol_node = reaction_node.children[next_idx]
+            N_selection+=1
+            if mol_node.is_deadend:
+                reaction_node = mol_node.children[PUCT.argmax()]
+                if not_expanded_and_not_succ.any():
+                # randomly select an unexpanded and unsuccessful molecule node
+                    next_idx = np.random.choice(len(reaction_node.children), p=not_expanded_and_not_succ/not_expanded_and_not_succ.sum())
+                elif not_succ.any():
+                    # randomly select an unsuccessful molecule node
+                    next_idx = np.random.choice(len(reaction_node.children), p=not_succ/not_succ.sum())
+                else:
+                    # reaction_node is successful, then select a child randomly
+                    assert root_mol.succ
+                    next_idx = np.random.choice(len(reaction_node.children))
+                mol_node = reaction_node.children[next_idx]
             assert not mol_node.is_deadend
 
         # mol_node is either an (1) unexpanded node or a (2) building block
@@ -164,6 +235,11 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
                 nlls_reference = 0.0 - np.log(np.clip(np.array(scores_reference), 1e-3, 1.0))
 
                 reactant_lists = []
+                # filename="%s_obsevation"%(mol_node.mol)
+                # with open(filename, 'w', newline='') as file:
+                #     writer = csv.writer(file)
+                #     # 写入表头
+                #     writer.writerow(['mol', 'init_value', 'prior'])
                 for j in range(len(scores)):
                     reactant_list = list(set(reactants[j].split('.')))
                     reactant_lists.append(reactant_list)
@@ -177,14 +253,17 @@ def simulate(mol_tree, root_mol, available_num_model_calls, expand_fn, args, tes
                     return model_calls_cnt
 
             else: # deadends
-                mol_tree.mcts_expand(mol_node, None, None, None, None)
+                mol_tree.mcts_expand(mol_node, None, None, None,None)
 
         mol_tree.mcts_backup(mol_node)
         mol_node.open = False
         if test and root_mol.succ:
-            return model_calls_cnt
-
-    return model_calls_cnt
+            return model_calls_cnt,llm_calls_cnt
+    with open(filename, 'a', newline='') as file:
+        writer = csv.writer(file)
+        # 写入数据行
+        writer.writerow(['num of llm calls:',llm_calls_cnt])
+    return model_calls_cnt,llm_calls_cnt
 
 def take_reaction(mol_tree, mol_node, temperature=1, test=False):
     N = np.array([reaction.N if not reaction.is_deadend else 0 for reaction in mol_node.children])

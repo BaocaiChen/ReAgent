@@ -1,0 +1,35 @@
+[
+    "COC(=O)c1cccn1CCF>>FCCI.COC(=O)c1ccc[nH]1"
+]
+[
+    "CC(C)(C)OC(=O)N1CCC(C(c2cc(F)ccc2F)S(=O)(=O)c2ccc(Cl)cc2)CC1>>CC(C)(C)OC(=O)N1CCC(O)CC1.O=S(=O)(Cc1cc(F)ccc1F)c1ccc(Cl)cc1"
+]
+[
+    "Cn1c(C=Cc2ccc(F)cc2)nc2ccccc2c1=O>>O=Cc1ccc(F)cc1.Cc1nc2ccccc2c(=O)n1C"
+]
+[
+    "Cc1ccc(C(=O)N2CCC(c3ccc(-c4cnn(C)c4)cc3)CC2)cc1NC(=O)c1ccc(NC(C)C)nc1>>Cc1ccc(C(=O)N2CCC(c3ccc(-c4cnn(C)c4)cc3)CC2)cc1NC(=O)c1ccc(Cl)nc1.CC(C)N",
+    "Cc1ccc(C(=O)N2CCC(c3ccc(-c4cnn(C)c4)cc3)CC2)cc1NC(=O)c1ccc(Cl)nc1>>O=C(Cl)c1ccc(Cl)nc1.Cc1ccc(C(=O)N2CCC(c3ccc(-c4cnn(C)c4)cc3)CC2)cc1N",
+    "Cc1ccc(C(=O)N2CCC(c3ccc(-c4cnn(C)c4)cc3)CC2)cc1N>>Cn1cc(-c2ccc(C3CCNCC3)cc2)cn1.Cc1ccc(C(=O)O)cc1N"
+]
+[
+    "Cc1nnc(NC2CCSCC2)[nH]1>>O=C1CCSCC1.Cc1nnc(N)[nH]1"
+]
+[
+    "O[C@H](CNCc1ccccc1)c1ccc(F)cc1>>NCc1ccccc1.Fc1ccc([C@H]2CO2)cc1"
+]
+[
+    "CC(O)(CNC(=O)c1cc(-c2ccc(Cl)c(Cl)c2)c(OCC(F)(F)F)nc1C(F)(F)F)C1CC1>>CC(O)(CNC(=O)c1cc(Br)c(OCC(F)(F)F)nc1C(F)(F)F)C1CC1.OB(O)c1ccc(Cl)c(Cl)c1",
+    "CC(O)(CNC(=O)c1cc(Br)c(OCC(F)(F)F)nc1C(F)(F)F)C1CC1>>O=C(O)c1cc(Br)c(OCC(F)(F)F)nc1C(F)(F)F.CC(O)(CN)C1CC1"
+]
+[
+    "COCCc1ccc(-c2ccc(C#N)cc2)cc1>>CN(C)C=O.COCCc1ccc(-c2ccc(I)cc2)cc1",
+    "COCCc1ccc(-c2ccc(I)cc2)cc1>>[O-][I+2]([O-])O.COCCc1ccc(-c2ccccc2)cc1",
+    "COCCc1ccc(-c2ccccc2)cc1>>COCCOS(=O)(=O)c1ccc(C)cc1.Brc1ccc(-c2ccccc2)cc1"
+]
+[
+    "[N-]=[N+]=Nc1ccc(F)cc1-c1ccnn1C1CCCCO1>>[N-]=[N+]=Nc1ccc(F)cc1Br.CC1(C)OB(c2ccnn2C2CCCCO2)OC1(C)C"
+]
+[
+    "CCCCN(C(=O)C(F)(F)F)c1ccc(F)cc1F>>O=C(Nc1ccc(F)cc1F)C(F)(F)F.CCCCOS(C)(=O)=O"
+]

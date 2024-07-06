@@ -65,11 +65,12 @@ def test_plan():
         raise NotImplementedError
 
     result_folder = pathlib.Path(args.result_folder)
+    #print(result_folder)
     assert result_folder.exists()
     for checkpoint_folder in result_folder.iterdir():
         if not checkpoint_folder.is_dir():
             continue
-
+        #print(checkpoint_folder)
         t0 = time.time()
         num_iters = [50, 100, 200, 300, 400, 500]
         result_iter = {
@@ -114,6 +115,7 @@ def test_plan():
             print(f"Prior network cannot be found at {prior_ckpt}")
 
         load_model_to_runner(one_step.net, value_net, prior_net, runner, args.n_gpus)
+        logging.info("method %s : "%(args.method))
         if args.method == "mcts":
             _, _, _, _, _, _, plan_results = runner.mcts(target_mols, target_mols_id, test=True)
         elif args.method == "retro":
@@ -163,7 +165,8 @@ def test_plan():
         logging.info('Finish testing %s with checkpoint %s on dataset %s'%
                      (args.method, checkpoint_folder.name, os.path.basename(dataset_name)))
         logging.info('Succ: %d/%d | avg time: %.2f s | avg iter: %.2f'%
-            (sum(evaluation_metrics["succ"]), num_targets, avg_time, avg_iter))   
+            (sum(evaluation_metrics["succ"]), num_targets, avg_time, avg_iter)) 
+          
         if args.method == "mcts":
             avg_depth = np.array(plan_results['route_lens']).mean().item()
             logging.info('Shortest route cost: %.2f | avg depth: %.2f' % 

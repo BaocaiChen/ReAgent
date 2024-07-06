@@ -2,7 +2,7 @@ import os
 import numpy as np
 import logging
 from retro_star.alg.mol_tree import MolTree
-
+import csv
 
 def molstar(target_mol, target_mol_id, starting_mols, expand_fn, value_fn,
             iterations, viz=False, viz_dir=None, draw_mols=True):
@@ -23,7 +23,12 @@ def molstar(target_mol, target_mol_id, starting_mols, expand_fn, value_fn,
                 else:
                     scores.append(np.inf)
             scores = np.array(scores)
-
+            # llm_calls_cnt = 0
+            # filename = 'cashe/test_search_tree_%s_%s_%s.csv'%(target_mol_id,i,"retro")
+            # with open(filename, 'w', newline='') as file:
+            #     writer = csv.writer(file)
+            #     # 写入数据行
+            #     writer.writerow(['id','reactions'])
             if np.min(scores) == np.inf:
                 logging.info('No open nodes!')
                 break

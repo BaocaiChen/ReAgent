@@ -5,7 +5,8 @@ import networkx as nx
 from graphviz import Digraph
 from retro_star.alg.mdtree_mol_node import MDTreeMolNode
 from retro_star.alg.mdtree_reaction_node import MDTreeReactionNode
-
+from retro_star.chat import GPTCall
+import csv
 class OnlineSearchTree:
     def __init__(self, target_mol, known_mols, value_fn, prior_fn, args):
         self.target_mol = target_mol
@@ -28,7 +29,9 @@ class OnlineSearchTree:
 
     def _add_mol_node(self, mol, parent, ancestors):
         is_known = mol in self.known_mols
-
+        #context=""
+        #print(mol)
+        #response_of_GPT=GPTCall(context)
         init_value = 0.0 if is_known else self.value_fn(mol)
         prior = 1.0 if is_known else self.prior_fn(mol)
 
@@ -72,6 +75,13 @@ class OnlineSearchTree:
             return
 
         ancestors = mol_node.get_ancestors()
+        #filename = '%s_observation.csv'%(mol_node.mol)
+        # 写入CSV文件
+        # if filename is not None :
+        #     with open(filename, 'w', newline='') as file:
+        #         writer = csv.writer(file)
+        #         # 写入表头
+        #         writer.writerow(['mol', 'init_value', 'prior'])
         for i in range(len(reactant_lists)):
             # remove repeated molecules
             for mol in reactant_lists[i]:
@@ -87,13 +97,20 @@ class OnlineSearchTree:
                 reaction_node.Q = reaction_node.cost
                 reaction_node.R = 1
                 reaction_node.succ = True
+
                 for mol in reaction_node.children:
                     # deadend case #2 (long): depth execeeds the limit
                     if mol.depth >= self.args.depth and not mol.is_known: # TODO: make it a hyper-parameter
                         mol.is_deadend = True
                         mol.open = False
-
+                    #init_value V^cost 越小越好, prior V^syn 越大越好
                     reaction_node.Q += mol.init_value
+                    # with open(filename, 'a', newline='') as file:
+                    #     writer = csv.writer(file)
+                    #     # 写入表头
+                    #     writer.writerow([mol.mol, mol.init_value, mol.prior])
+                        # print(mol.init_value)
+                        # print(mol.prior)
                     reaction_node.R *= mol.prior
                     reaction_node.succ &= mol.succ
                     reaction_node.is_deadend |= mol.is_deadend

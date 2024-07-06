@@ -159,6 +159,7 @@ class SerialRunner:
             batch_result['succ_len'].append(mol_tree.root.succ_len)
             if mol_tree.root.succ_len != np.inf:
                 batch_result["route_shortest_cost"].append(mol_tree.root.succ_len)
+            
 
         return mols_r_batch, pris_batch, mols_v_batch, vals_batch, mols_t_batch, tmps_batch, batch_result
 
